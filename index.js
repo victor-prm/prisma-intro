@@ -1,6 +1,7 @@
-import express from "express";
+import express, { request } from "express";
 import cors from "cors";
 import { PrismaClient } from "@prisma/client";
+import authMiddleware from "./auth.middleware.js";
 
 const prisma = new PrismaClient();
 const app = express()
@@ -13,9 +14,30 @@ app.use(express.json())
 
 
 //FIND ALL
-app.get("/bolscher", async (_, res) => {
-    let bolscher = await prisma.bolsche.findMany();
-    res.json(bolscher)
+app.get("/bolscher", async (req, res) => {
+    let itemCount = await prisma.bolsche.count();
+
+    let apiUrl = `${req.protocol}://${req.hostname}${req.hostname === "localhost" ? ":4000" : ""}`;
+    let apiPath = `${apiUrl}${req.path}`
+    
+    let offset = Number(req.query.offset) || 0;
+    let limit = Number(req.query.limit) || 5
+    
+    let prevLink = `${apiPath}?offset=${offset-limit}&limit=${limit}`
+    let nextLink = `${apiPath}?offset=${offset+limit}&limit=${limit}`
+    
+    let bolscher = await prisma.bolsche.findMany(
+        {
+            skip: offset,
+            take: limit
+        }
+    );
+    res.json({
+        results: bolscher,
+        count: itemCount,
+        prev: offset > 0 ? prevLink : null,
+        next: (offset + limit < itemCount) ? nextLink : null,
+    })
 })
 
 //FIND BY ID
@@ -32,7 +54,7 @@ app.get("/bolscher/:id", async (req, res) => {
 })
 
 //CREATE NEW 
-app.post("/bolscher", async (req, res) => {
+app.post("/bolscher", authMiddleware, async (req, res) => {
     let body = req.body
     let bolsche = await prisma.bolsche.create(
         {
@@ -52,7 +74,7 @@ app.post("/bolscher", async (req, res) => {
 })
 
 //DELETE BY ID
-app.delete("/bolscher", async (req, res) => {
+app.delete("/bolscher", authMiddleware, async (req, res) => {
     let body = req.body
     let bolsche = await prisma.bolsche.findUnique(
         {
@@ -73,7 +95,7 @@ app.delete("/bolscher", async (req, res) => {
 })
 
 //UPDATE BY ID
-app.patch("/bolscher", async (req, res) => {
+app.patch("/bolscher", authMiddleware, async (req, res) => {
     let body = req.body
     let bolsche = await prisma.bolsche.findUnique(
         {
