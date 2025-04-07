@@ -19,13 +19,13 @@ app.get("/bolscher", async (req, res) => {
 
     let apiUrl = `${req.protocol}://${req.hostname}${req.hostname === "localhost" ? ":4000" : ""}`;
     let apiPath = `${apiUrl}${req.path}`
-    
+
     let offset = Number(req.query.offset) || 0;
     let limit = Number(req.query.limit) || 5
-    
-    let prevLink = `${apiPath}?offset=${offset-limit}&limit=${limit}`
-    let nextLink = `${apiPath}?offset=${offset+limit}&limit=${limit}`
-    
+
+    let prevLink = `${apiPath}?offset=${offset - limit}&limit=${limit}`
+    let nextLink = `${apiPath}?offset=${offset + limit}&limit=${limit}`
+
     let bolscher = await prisma.bolsche.findMany(
         {
             skip: offset,
@@ -52,6 +52,31 @@ app.get("/bolscher/:id", async (req, res) => {
     )
     res.json(bolsche)
 })
+
+//FIND RANDOM
+app.get('/bolscher-random', async (req, res) => {
+    try {
+        const allIds = await prisma.bolsche.findMany({
+            select: { id: true },
+        });
+
+        if (allIds.length === 0) {
+            return res.status(404).json({ message: 'No items available.' });
+        }
+
+        const randomIndex = Math.floor(Math.random() * allIds.length);
+        const randomId = allIds[randomIndex].id;
+
+        const randomItem = await prisma.bolsche.findUnique({
+            where: { id: randomId },
+        });
+
+        res.json(randomItem);
+    } catch (error) {
+        console.error('Error fetching random bolsche:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
 //CREATE NEW 
 app.post("/bolscher", authMiddleware, async (req, res) => {
